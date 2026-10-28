@@ -4,19 +4,20 @@ from google.genai import types
 
 client = genai.Client(
     api_key=st.secrets["GEMINI_API_KEY"],
-    http_options=types.HttpOptions(timeout=60000),  # stop waiting after 60 seconds
+    http_options=types.HttpOptions(timeout=90000),
 )
 
 st.set_page_config(page_title="YouTube Video Summarizer", page_icon="🎬")
 st.title("🎬 YouTube Video Summarizer")
-st.write("Paste a public YouTube link and get an instant AI summary.")
 
-url = st.text_input("Paste a YouTube link")
 style = st.selectbox(
     "Summary style",
     ["Short (3 bullets)", "Detailed", "Explain like I'm 12"],
 )
-minutes = st.slider("Only summarize the first X minutes (faster)", 1, 20, 5)
+prompt = (
+    f"Summarize this. Style: {style}. "
+    "Include a one-line title and 3 key takeaways."
+)
 
 
 def clean_url(link):
@@ -27,32 +28,38 @@ def clean_url(link):
     return link.split("&")[0]
 
 
-if st.button("Summarize") and url:
-    video_url = clean_url(url)
-    st.caption(f"Using: {video_url}")
-    with st.spinner("Watching the video..."):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=types.Content(
-                    parts=[
-                        types.Part(
-                            file_data=types.FileData(file_uri=video_url),
-                            video_metadata=types.VideoMetadata(
-                                start_offset="0s",
-                                end_offset=f"{minutes * 60}s",
+tab1, tab2 = st.tabs(["🔗 From YouTube link", "📝 From transcript (fast)"])
+
+with tab1:
+    url = st.text_input("Paste a YouTube link")
+    minutes = st.slider("Only summarize the first X minutes", 1, 10, 2)
+    if st.button("Summarize video") and url:
+        with st.spinner("Watching the video..."):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=types.Content(
+                        parts=[
+                            types.Part(
+                                file_data=types.FileData(file_uri=clean_url(url)),
+                                video_metadata=types.VideoMetadata(
+                                    start_offset="0s",
+                                    end_offset=f"{minutes * 60}s",
+                                ),
                             ),
-                        ),
-                        types.Part(
-                            text=f"Summarize this video. Style: {style}. "
-                            "Include a one-line title and 3 key takeaways."
-                        ),
-                    ]
-                ),
-                config=types.GenerateContentConfig(
-                    media_resolution=types.MediaResolution.MEDIA_RESOLUTION_LOW
-                ),
-            )
-            st.success(response.text)
-        except Exception as e:
-            st.error(f"Something went wrong: {e}")
+                            types.Part(text=prompt),
+                        ]
+                    ),
+                    config=types.GenerateContentConfig(
+                        media_resolution=types.MediaResolution.MEDIA_RESOLUTION_LOW
+                    ),
+                )
+                st.success(response.text)
+            except Exception as e:
+                st.error(f"Video method failed: {e}")
+                st.info("Try a shorter video, or use the transcript tab instead.")
+
+with tab2:
+    transcript = st.text_area("Paste the video transcript or any text", height=250)
+    if st.button("Summarize text") and transcript:
+        with st.spinner("Summarizing..."):
