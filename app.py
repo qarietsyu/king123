@@ -2,7 +2,10 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+client = genai.Client(
+    api_key=st.secrets["GEMINI_API_KEY"],
+    http_options=types.HttpOptions(timeout=60000),  # stop waiting after 60 seconds
+)
 
 st.set_page_config(page_title="YouTube Video Summarizer", page_icon="🎬")
 st.title("🎬 YouTube Video Summarizer")
@@ -25,6 +28,8 @@ def clean_url(link):
 
 
 if st.button("Summarize") and url:
+    video_url = clean_url(url)
+    st.caption(f"Using: {video_url}")
     with st.spinner("Watching the video..."):
         try:
             response = client.models.generate_content(
@@ -32,7 +37,7 @@ if st.button("Summarize") and url:
                 contents=types.Content(
                     parts=[
                         types.Part(
-                            file_data=types.FileData(file_uri=clean_url(url)),
+                            file_data=types.FileData(file_uri=video_url),
                             video_metadata=types.VideoMetadata(
                                 start_offset="0s",
                                 end_offset=f"{minutes * 60}s",
