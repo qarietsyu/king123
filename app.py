@@ -18,7 +18,7 @@ if st.button("Summarize") and url:
     with st.spinner("Watching the video..."):
         try:
             response = client.models.generate_content(
-                model="model="gemini-3.8-flash",",
+                model="model="gemini-3.8-flash",
                 contents=types.Content(
                     parts=[
                         types.Part(file_data=types.FileData(file_uri=url)),
