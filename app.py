@@ -63,3 +63,11 @@ with tab2:
     transcript = st.text_area("Paste the video transcript or any text", height=250)
     if st.button("Summarize text") and transcript:
         with st.spinner("Summarizing..."):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=f"{prompt}\n\nText:\n{transcript}",
+                )
+                st.success(response.text)
+            except Exception as e:
+                st.error(f"Something went wrong: {e}")
